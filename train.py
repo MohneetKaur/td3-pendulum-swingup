@@ -14,14 +14,22 @@ import gymnasium as gym
 import numpy as np
 
 from replay_buffer import ReplayBuffer
+from sparse_reward_wrapper import SparseRewardPendulum
 from td3 import TD3Agent
 
 
-def evaluate(agent, env_name, episodes=5, seed=100):
+def make_env(env_name, sparse_reward=False):
+    env = gym.make(env_name)
+    if sparse_reward:
+        env = SparseRewardPendulum(env)
+    return env
+
+
+def evaluate(agent, env_name, sparse_reward=False, episodes=5, seed=100):
     """Mean/std return of the deterministic (noise-free) policy — a
     cleaner convergence signal than noisy training-episode rewards, which
     include exploration noise."""
-    env = gym.make(env_name)
+    env = make_env(env_name, sparse_reward)
     returns = []
     for i in range(episodes):
         state, _ = env.reset(seed=seed + i)
@@ -36,9 +44,9 @@ def evaluate(agent, env_name, episodes=5, seed=100):
     return float(np.mean(returns)), float(np.std(returns))
 
 
-def record_angle_trace(agent, env_name, seed=42):
+def record_angle_trace(agent, env_name, sparse_reward=False, seed=42):
     """Run one greedy episode and log pendulum angle (theta) over time."""
-    env = gym.make(env_name)
+    env = make_env(env_name, sparse_reward)
     state, _ = env.reset(seed=seed)
     thetas, done = [], False
     while not done:
@@ -70,6 +78,11 @@ def main():
         action="store_true",
         help="ablation: use a single critic for the Bellman target instead of min(Q1,Q2)",
     )
+    parser.add_argument(
+        "--sparse-reward",
+        action="store_true",
+        help="use SparseRewardPendulum wrapper (0 near-upright, -1 elsewhere) instead of the dense reward",
+    )
     args = parser.parse_args()
 
     os.makedirs(args.out, exist_ok=True)
@@ -79,7 +92,7 @@ def main():
 
     torch.manual_seed(args.seed)
 
-    env = gym.make(args.env)
+    env = make_env(args.env, args.sparse_reward)
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
     max_action = float(env.action_space.high[0])
@@ -96,7 +109,7 @@ def main():
     buffer = ReplayBuffer(state_dim, action_dim)
 
     # capture behavior before any training for the before/after figure
-    theta_untrained = record_angle_trace(agent, args.env)
+    theta_untrained = record_angle_trace(agent, args.env, args.sparse_reward)
 
     log = {
         "episode_reward": [],
@@ -140,14 +153,14 @@ def main():
         print(f"Episode {episode:4d} | reward: {episode_reward:8.2f} | buffer: {len(buffer)}")
 
         if episode % args.eval_every == 0:
-            mean_r, std_r = evaluate(agent, args.env)
+            mean_r, std_r = evaluate(agent, args.env, args.sparse_reward)
             log["eval_episode"].append(episode)
             log["eval_reward_mean"].append(mean_r)
             log["eval_reward_std"].append(std_r)
             print(f"  eval @ ep {episode}: {mean_r:.2f} +/- {std_r:.2f}")
 
     log["theta_untrained"] = theta_untrained
-    log["theta_trained"] = record_angle_trace(agent, args.env)
+    log["theta_trained"] = record_angle_trace(agent, args.env, args.sparse_reward)
 
     with open(os.path.join(args.out, "log.json"), "w") as f:
         json.dump(log, f)

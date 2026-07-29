@@ -22,9 +22,15 @@ Prepared for the Jefferson Lab CST Data Scientist I interview problem set.
   and logs metrics. Exposes ablation flags (`--no-double-q`, `--policy-delay`,
   `--policy-noise`, `--noise-clip`) so the same script can train degraded
   variants for comparison.
+- `sparse_reward_wrapper.py` — `SparseRewardPendulum`, a Gymnasium `Wrapper`
+  around `Pendulum-v1` (same dynamics/state/action space) that replaces the
+  dense shaped reward with a sparse `0` near-upright / `-1` elsewhere signal —
+  used to stress-test the ablations below on a harder version of the same task.
 - `make_figures.py` — generates the core presentation figures from a training run.
-- `make_ablation_figures.py` — generates the ablation comparison, multi-seed
-  variance, and robustness figures from the additional runs below.
+- `make_ablation_figures.py` — generates the dense-reward ablation comparison,
+  multi-seed variance, and robustness figures.
+- `make_sparse_ablation_figure.py` — generates the sparse-reward ablation
+  comparison figure.
 
 ## Setup
 
@@ -49,6 +55,14 @@ python3 train.py --episodes 200 --start-steps 2000 --no-double-q --policy-delay 
 python3 train.py --episodes 200 --start-steps 2000 --seed 1 --out results_seed1
 python3 train.py --episodes 200 --start-steps 2000 --seed 2 --out results_seed2
 python3 make_ablation_figures.py
+
+# sparse-reward ablation (used by make_sparse_ablation_figure.py)
+python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --out results_sparse_full_td3
+python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --no-double-q --out results_sparse_no_doubleq
+python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --policy-delay 1 --out results_sparse_no_delay
+python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --policy-noise 0 --noise-clip 0 --out results_sparse_no_smoothing
+python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --no-double-q --policy-delay 1 --policy-noise 0 --noise-clip 0 --out results_sparse_vanilla_ddpg
+python3 make_sparse_ablation_figure.py
 ```
 
 Outputs:
@@ -107,6 +121,46 @@ failure modes that compound over harder problems (e.g. higher-dimensional
 continuous control, longer horizons, or sparser rewards) — Pendulum-v1's
 simplicity is exactly why it's a common introductory benchmark, and this
 result is consistent with that.
+
+### Follow-up: sparse-reward ablation
+
+The dense-reward ablation above found no meaningful difference between
+variants because Pendulum-v1's default reward is densely shaped — it gives
+gradient toward the goal at every step, which doesn't stress the failure
+modes TD3's mechanisms exist to prevent. To actually test that hypothesis,
+we re-ran the same 5 configs on `SparseRewardPendulum` (`sparse_reward_wrapper.py`):
+same environment dynamics, but reward is `0` within ~11 degrees of upright
+and `-1` everywhere else, removing the dense gradient and making credit
+assignment much harder — closer to the conditions where DDPG's known
+instabilities actually surface.
+
+| Variant | Final eval reward (ep 200, sparse) |
+|---|---|
+| Full TD3 | -32.2 |
+| No double-Q (single critic) | -35.8 |
+| No delayed updates | -40.4 |
+| **No target policy smoothing** | **-196.4 (failed to learn)** |
+| **Vanilla DDPG (all three off)** | **-188.2 (failed to learn)** |
+
+See `8_sparse_reward_ablation.png`. This time the ablation is decisive:
+**target policy smoothing is the load-bearing mechanism on this harder
+task** — removing it alone collapses performance to essentially the
+random-policy floor (-200), and it never recovers within the 200-episode
+budget. Vanilla DDPG fails for the same reason (it also lacks smoothing).
+Double-Q and delayed updates matter too, but differently: both eventually
+converge to close to full TD3's final performance, just far slower —
+looking at the full learning curves, full TD3 reaches ~-40 by episode 60,
+while no-double-Q and no-delay don't reach that level until episode
+~130-150. So on this task: smoothing is necessary for learning to happen
+at all, while double-Q and delay mainly control *how fast* it happens.
+
+This is consistent with the theory: target policy smoothing exists to stop
+the critic from overfitting to narrow, spurious action peaks. Under a
+sparse reward, the Q-function has very little grounded signal to learn
+from (most transitions score `-1` identically), so it's far more prone to
+exactly this kind of narrow overfitting than under a dense reward — which
+is why smoothing's absence is catastrophic here but nearly invisible under
+the dense reward above.
 
 ### Multi-seed variance (full TD3, 3 seeds)
 
