@@ -1,3 +1,11 @@
+"""Coordinates TD3 agent training against Pendulum-v1: environment rollout,
+replay buffer storage, agent updates, periodic evaluation, and logging.
+
+Ablation flags (--no-double-q, --policy-delay 1, --policy-noise 0
+--noise-clip 0) let this same script train degraded variants that each
+disable one of TD3's three mechanisms, for direct comparison against the
+full algorithm.
+"""
 import argparse
 import json
 import os
@@ -10,6 +18,9 @@ from td3 import TD3Agent
 
 
 def evaluate(agent, env_name, episodes=5, seed=100):
+    """Mean/std return of the deterministic (noise-free) policy — a
+    cleaner convergence signal than noisy training-episode rewards, which
+    include exploration noise."""
     env = gym.make(env_name)
     returns = []
     for i in range(episodes):
@@ -51,6 +62,14 @@ def main():
     parser.add_argument("--eval-every", type=int, default=10)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--out", default="results")
+    parser.add_argument("--policy-delay", type=int, default=2)
+    parser.add_argument("--policy-noise", type=float, default=0.2)
+    parser.add_argument("--noise-clip", type=float, default=0.5)
+    parser.add_argument(
+        "--no-double-q",
+        action="store_true",
+        help="ablation: use a single critic for the Bellman target instead of min(Q1,Q2)",
+    )
     args = parser.parse_args()
 
     os.makedirs(args.out, exist_ok=True)
@@ -65,7 +84,15 @@ def main():
     action_dim = env.action_space.shape[0]
     max_action = float(env.action_space.high[0])
 
-    agent = TD3Agent(state_dim, action_dim, max_action)
+    agent = TD3Agent(
+        state_dim,
+        action_dim,
+        max_action,
+        policy_delay=args.policy_delay,
+        policy_noise=args.policy_noise,
+        noise_clip=args.noise_clip,
+        use_double_q=not args.no_double_q,
+    )
     buffer = ReplayBuffer(state_dim, action_dim)
 
     # capture behavior before any training for the before/after figure

@@ -1,3 +1,7 @@
+"""Post-processing only: reads results/log.json (written by train.py) and
+renders the presentation figures. Has no dependency on networks.py, td3.py,
+or replay_buffer.py since everything it needs was already logged as plain
+numbers during training."""
 import json
 import os
 

@@ -31,6 +31,7 @@ class TD3Agent:
         policy_delay=2,
         actor_lr=3e-4,
         critic_lr=3e-4,
+        use_double_q=True,
         device="cpu",
     ):
         self.device = torch.device(device)
@@ -40,6 +41,9 @@ class TD3Agent:
         self.policy_noise = policy_noise * max_action
         self.noise_clip = noise_clip * max_action
         self.policy_delay = policy_delay
+        # ablation switch: True = TD3's clipped double-Q target (min of two
+        # critics), False = single-critic target (as in vanilla DDPG)
+        self.use_double_q = use_double_q
 
         self.actor = Actor(state_dim, action_dim, max_action).to(self.device)
         self.actor_target = copy.deepcopy(self.actor)
@@ -83,9 +87,9 @@ class TD3Agent:
                 -self.max_action, self.max_action
             )
 
-            # 1. clipped double Q-learning
+            # 1. clipped double Q-learning (ablatable via use_double_q)
             target_q1, target_q2 = self.critic_target(next_state, next_action)
-            target_q = torch.min(target_q1, target_q2)
+            target_q = torch.min(target_q1, target_q2) if self.use_double_q else target_q1
             target_q = reward + (1 - done) * self.discount * target_q
 
         current_q1, current_q2 = self.critic(state, action)

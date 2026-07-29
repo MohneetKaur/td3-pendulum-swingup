@@ -3,6 +3,10 @@ import torch.nn as nn
 
 
 class Actor(nn.Module):
+    """Deterministic policy: state -> action. tanh output is scaled by
+    max_action so the network's action bound matches the environment's,
+    without needing to clip anywhere downstream."""
+
     def __init__(self, state_dim, action_dim, max_action, hidden_dim=256):
         super().__init__()
         self.net = nn.Sequential(
@@ -45,5 +49,8 @@ class Critic(nn.Module):
         return self.q1(sa), self.q2(sa)
 
     def q1_forward(self, state, action):
+        """Q1 only — used for the actor's policy gradient. TD3 convention
+        is to backprop through a single critic here; both critics are
+        only combined (via min) when computing the Bellman target."""
         sa = torch.cat([state, action], dim=1)
         return self.q1(sa)

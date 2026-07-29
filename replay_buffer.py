@@ -2,6 +2,12 @@ import numpy as np
 
 
 class ReplayBuffer:
+    """Fixed-size circular buffer of (s, a, r, s', done) transitions.
+    Preallocated numpy arrays (not a Python list) since this fills to
+    tens of thousands of entries during training. sample() draws random
+    indices to decorrelate consecutive environment steps, which off-policy
+    methods like TD3 require for stable training."""
+
     def __init__(self, state_dim, action_dim, capacity=200_000):
         self.capacity = capacity
         self.ptr = 0
