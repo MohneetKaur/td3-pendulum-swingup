@@ -13,9 +13,7 @@ import os
 import gymnasium as gym
 import numpy as np
 
-from replay_buffer import ReplayBuffer
-from sparse_reward_wrapper import SparseRewardPendulum
-from td3 import TD3Agent
+from td3 import TD3Agent, ReplayBuffer, SparseRewardPendulum
 
 
 def make_env(env_name, sparse_reward=False):
@@ -69,7 +67,7 @@ def main():
     parser.add_argument("--explore-noise", type=float, default=0.1)  # fraction of max_action
     parser.add_argument("--eval-every", type=int, default=10)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--out", default="results")
+    parser.add_argument("--out", default="results/main")
     parser.add_argument("--policy-delay", type=int, default=2)
     parser.add_argument("--policy-noise", type=float, default=0.2)
     parser.add_argument("--noise-clip", type=float, default=0.5)

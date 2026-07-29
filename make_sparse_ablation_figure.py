@@ -1,6 +1,6 @@
 """Builds the sparse-reward ablation comparison figure from the
-results_sparse_* runs -- a harder variant of Pendulum-v1 (see
-sparse_reward_wrapper.py) used to stress-test whether each TD3 mechanism
+results/sparse_* runs -- a harder variant of Pendulum-v1 (see
+td3/sparse_reward_wrapper.py) used to stress-test whether each TD3 mechanism
 is actually load-bearing, since the dense-reward ablation (see
 make_ablation_figures.py) showed no meaningful difference between variants.
 """
@@ -17,11 +17,11 @@ def load(path):
 
 def main(out_dir="figures"):
     runs = {
-        "Full TD3": "results_sparse_full_td3",
-        "No double-Q (single critic)": "results_sparse_no_doubleq",
-        "No delayed updates": "results_sparse_no_delay",
-        "No target smoothing": "results_sparse_no_smoothing",
-        "Vanilla DDPG (all off)": "results_sparse_vanilla_ddpg",
+        "Full TD3": "results/sparse_full_td3",
+        "No double-Q (single critic)": "results/sparse_no_doubleq",
+        "No delayed updates": "results/sparse_no_delay",
+        "No target smoothing": "results/sparse_no_smoothing",
+        "Vanilla DDPG (all off)": "results/sparse_vanilla_ddpg",
     }
     colors = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:gray"]
 

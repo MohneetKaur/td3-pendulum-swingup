@@ -17,7 +17,7 @@ def moving_average(x, window=10):
     return np.convolve(x, kernel, mode="valid")
 
 
-def main(results_dir="results", out_dir="figures"):
+def main(results_dir="results/main", out_dir="figures"):
     os.makedirs(out_dir, exist_ok=True)
     with open(os.path.join(results_dir, "log.json")) as f:
         log = json.load(f)

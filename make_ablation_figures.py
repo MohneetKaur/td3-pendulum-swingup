@@ -1,6 +1,6 @@
 """Builds the ablation comparison, multi-seed variance, and robustness
-histogram figures from the extra training runs (results_ablation_*,
-results_seed1, results_seed2) alongside the main results/ run."""
+histogram figures from the extra training runs (results/ablation_*,
+results/seed1, results/seed2) alongside the main results/main run."""
 import json
 import os
 
@@ -19,11 +19,11 @@ def load(path):
 
 def ablation_comparison(out_dir="figures"):
     runs = {
-        "Full TD3": "results",
-        "No double-Q (single critic)": "results_ablation_no_doubleq",
-        "No delayed updates": "results_ablation_no_delay",
-        "No target smoothing": "results_ablation_no_smoothing",
-        "Vanilla DDPG (all off)": "results_ablation_vanilla_ddpg",
+        "Full TD3": "results/main",
+        "No double-Q (single critic)": "results/ablation_no_doubleq",
+        "No delayed updates": "results/ablation_no_delay",
+        "No target smoothing": "results/ablation_no_smoothing",
+        "Vanilla DDPG (all off)": "results/ablation_vanilla_ddpg",
     }
     fig, ax = plt.subplots(figsize=(8, 5))
     colors = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:gray"]
@@ -45,7 +45,7 @@ def ablation_comparison(out_dir="figures"):
 
 
 def multiseed_variance(out_dir="figures"):
-    paths = ["results", "results_seed1", "results_seed2"]
+    paths = ["results/main", "results/seed1", "results/seed2"]
     logs = [load(p) for p in paths]
     eval_eps = logs[0]["eval_episode"]
     # all three runs share the same eval schedule (eval_every=10, 200 episodes)
@@ -82,7 +82,7 @@ def robustness_histogram(out_dir="figures", n_seeds=30):
     max_action = float(env.action_space.high[0])
 
     agent = TD3Agent(state_dim, action_dim, max_action)
-    agent.actor.load_state_dict(torch.load("results/actor.pt"))
+    agent.actor.load_state_dict(torch.load("results/main/actor.pt"))
     agent.actor.eval()
 
     returns = []

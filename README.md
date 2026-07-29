@@ -8,24 +8,41 @@ Prepared for the Jefferson Lab CST Data Scientist I interview problem set.
 
 ## What's here
 
-- `networks.py` — Actor (deterministic policy) and twin-critic Q-networks.
-- `replay_buffer.py` — fixed-size circular experience replay buffer.
-- `td3.py` — `TD3Agent` class implementing the three TD3 mechanisms:
+```
+jlab-td3-interview/
+├── td3/                          core algorithm (importable package)
+│   ├── networks.py                 Actor + twin-critic Q-networks
+│   ├── replay_buffer.py            fixed-size circular experience buffer
+│   ├── agent.py                    TD3Agent — the algorithm itself
+│   └── sparse_reward_wrapper.py    SparseRewardPendulum env wrapper
+├── train.py                      entry point: coordinates rollout + training + logging
+├── make_figures.py                figures 1-4 (main run)
+├── make_ablation_figures.py       figures 5-7 (dense-reward ablation, seeds, robustness)
+├── make_sparse_ablation_figure.py figure 8 (sparse-reward ablation)
+├── results/                       one subfolder per training run (log.json, actor.pt, critic.pt)
+├── figures/                       generated PNGs, 1-8
+├── logs/                          captured stdout per run
+├── README.md, requirements.txt, .gitignore
+```
+
+- `td3/networks.py` — Actor (deterministic policy) and twin-critic Q-networks.
+- `td3/replay_buffer.py` — fixed-size circular experience replay buffer.
+- `td3/agent.py` — `TD3Agent` class implementing the three TD3 mechanisms:
   1. **Clipped double Q-learning** — two critics, Bellman target uses `min(Q1, Q2)` to
      counter overestimation bias.
   2. **Delayed policy updates** — actor and target networks updated every
      `policy_delay` critic steps (default 2).
   3. **Target policy smoothing** — clipped Gaussian noise added to the target
      action to regularize the critic against sharp, spurious Q-value peaks.
+- `td3/sparse_reward_wrapper.py` — `SparseRewardPendulum`, a Gymnasium `Wrapper`
+  around `Pendulum-v1` (same dynamics/state/action space) that replaces the
+  dense shaped reward with a sparse `0` near-upright / `-1` elsewhere signal —
+  used to stress-test the ablations below on a harder version of the same task.
 - `train.py` — coordinates environment rollout, replay buffer storage, and
   agent updates; periodically evaluates the deterministic (noise-free) policy
   and logs metrics. Exposes ablation flags (`--no-double-q`, `--policy-delay`,
   `--policy-noise`, `--noise-clip`) so the same script can train degraded
   variants for comparison.
-- `sparse_reward_wrapper.py` — `SparseRewardPendulum`, a Gymnasium `Wrapper`
-  around `Pendulum-v1` (same dynamics/state/action space) that replaces the
-  dense shaped reward with a sparse `0` near-upright / `-1` elsewhere signal —
-  used to stress-test the ablations below on a harder version of the same task.
 - `make_figures.py` — generates the core presentation figures from a training run.
 - `make_ablation_figures.py` — generates the dense-reward ablation comparison,
   multi-seed variance, and robustness figures.
@@ -43,31 +60,31 @@ pip install -r requirements.txt
 ## Run
 
 ```bash
-# main run
-python3 train.py --episodes 200 --start-steps 2000 --out results
+# main run (--out defaults to results/main)
+python3 train.py --episodes 200 --start-steps 2000
 python3 make_figures.py
 
 # ablation + multi-seed runs (used by make_ablation_figures.py)
-python3 train.py --episodes 200 --start-steps 2000 --no-double-q --out results_ablation_no_doubleq
-python3 train.py --episodes 200 --start-steps 2000 --policy-delay 1 --out results_ablation_no_delay
-python3 train.py --episodes 200 --start-steps 2000 --policy-noise 0 --noise-clip 0 --out results_ablation_no_smoothing
-python3 train.py --episodes 200 --start-steps 2000 --no-double-q --policy-delay 1 --policy-noise 0 --noise-clip 0 --out results_ablation_vanilla_ddpg
-python3 train.py --episodes 200 --start-steps 2000 --seed 1 --out results_seed1
-python3 train.py --episodes 200 --start-steps 2000 --seed 2 --out results_seed2
+python3 train.py --episodes 200 --start-steps 2000 --no-double-q --out results/ablation_no_doubleq
+python3 train.py --episodes 200 --start-steps 2000 --policy-delay 1 --out results/ablation_no_delay
+python3 train.py --episodes 200 --start-steps 2000 --policy-noise 0 --noise-clip 0 --out results/ablation_no_smoothing
+python3 train.py --episodes 200 --start-steps 2000 --no-double-q --policy-delay 1 --policy-noise 0 --noise-clip 0 --out results/ablation_vanilla_ddpg
+python3 train.py --episodes 200 --start-steps 2000 --seed 1 --out results/seed1
+python3 train.py --episodes 200 --start-steps 2000 --seed 2 --out results/seed2
 python3 make_ablation_figures.py
 
 # sparse-reward ablation (used by make_sparse_ablation_figure.py)
-python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --out results_sparse_full_td3
-python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --no-double-q --out results_sparse_no_doubleq
-python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --policy-delay 1 --out results_sparse_no_delay
-python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --policy-noise 0 --noise-clip 0 --out results_sparse_no_smoothing
-python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --no-double-q --policy-delay 1 --policy-noise 0 --noise-clip 0 --out results_sparse_vanilla_ddpg
+python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --out results/sparse_full_td3
+python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --no-double-q --out results/sparse_no_doubleq
+python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --policy-delay 1 --out results/sparse_no_delay
+python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --policy-noise 0 --noise-clip 0 --out results/sparse_no_smoothing
+python3 train.py --episodes 200 --start-steps 2000 --sparse-reward --no-double-q --policy-delay 1 --policy-noise 0 --noise-clip 0 --out results/sparse_vanilla_ddpg
 python3 make_sparse_ablation_figure.py
 ```
 
 Outputs:
-- `results*/log.json` — episode rewards, eval rewards, critic/actor losses, angle traces
-- `results*/actor.pt`, `results*/critic.pt` — trained model checkpoints
+- `results/<name>/log.json` — episode rewards, eval rewards, critic/actor losses, angle traces
+- `results/<name>/actor.pt`, `results/<name>/critic.pt` — trained model checkpoints
 - `figures/` — presentation-ready PNGs
 
 ## Results
@@ -178,7 +195,7 @@ starts near the bottom of the pendulum, which inherently cost more reward
 to swing up from than starts near the top, even under an optimal policy.
 See `7_robustness_histogram.png`.
 
-## Key hyperparameters (defaults in `train.py` / `td3.py`)
+## Key hyperparameters (defaults in `train.py` / `td3/agent.py`)
 
 | Param | Value |
 |---|---|
