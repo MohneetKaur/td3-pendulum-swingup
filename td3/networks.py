@@ -49,7 +49,7 @@ class Critic(nn.Module):
         return self.q1(sa), self.q2(sa)
 
     def q1_forward(self, state, action):
-        """Q1 only — used for the actor's policy gradient. TD3 convention
+        """Q1 only - used for the actor's policy gradient. TD3 convention
         is to backprop through a single critic here; both critics are
         only combined (via min) when computing the Bellman target."""
         sa = torch.cat([state, action], dim=1)

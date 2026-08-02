@@ -24,7 +24,7 @@ def make_env(env_name, sparse_reward=False):
 
 
 def evaluate(agent, env_name, sparse_reward=False, episodes=5, seed=100):
-    """Mean/std return of the deterministic (noise-free) policy — a
+    """Mean/std return of the deterministic (noise-free) policy - a
     cleaner convergence signal than noisy training-episode rewards, which
     include exploration noise."""
     env = make_env(env_name, sparse_reward)
